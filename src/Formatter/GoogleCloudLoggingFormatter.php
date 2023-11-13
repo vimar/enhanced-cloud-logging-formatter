@@ -24,6 +24,33 @@ use Monolog\Logger;
  */
 class GoogleCloudLoggingFormatter extends JsonFormatter
 {
+    /** @var self::BATCH_MODE_* */
+    protected $batchMode;
+    /** @var bool */
+    protected $appendNewline;
+    /** @var bool */
+    protected $ignoreEmptyContextAndExtra;
+    /** @var bool */
+    protected $includeStacktraces = false;
+
+    static protected $requestId = null;
+
+    /**
+     * @param self::BATCH_MODE_* $batchMode
+     */
+    public function __construct(
+        int $batchMode = self::BATCH_MODE_JSON,
+        bool $appendNewline = true,
+        bool $ignoreEmptyContextAndExtra = true,
+        bool $includeStacktraces = true
+    ) {
+        parent::__construct($batchMode, $appendNewline, $ignoreEmptyContextAndExtra, $includeStacktraces);
+
+        if (!static::$requestId) {
+            static::$requestId = uniqid(date("Y/m/d-H:i:s-"));
+        }
+    }
+
     /** {@inheritdoc} **/
     public function format(array $record): string
     {
@@ -31,30 +58,52 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
         $record['severity'] = $record['level_name'];
         $record['time'] = $record['datetime']->format(\DateTimeInterface::RFC3339_EXTENDED);
 
-        if ($record['level'] >= Logger::ERROR) {
-            $record = $this->setReportError($record);
-        }
+        // Add some generic contexts
+        $record = $this->setHttpRequest($record);
+        $record = $this->setReportError($record);
 
         // Remove keys that are not used by GCP
-        unset($record['level'], $record['level_name'], $record['datetime']);
-
+        unset($record['channel'], $record['level'], $record['level_name'], $record['datetime']);
+        
         return parent::format($record);
+    }
+
+    protected function setHttpRequest(array $record): array
+    {
+        // HttpRequest;
+        if (isset($_SERVER['REQUEST_METHOD']) && isset($_SERVER['REQUEST_URI'])) {
+            $record['context']['httpRequest'] = [
+                'requestMethod' => $_SERVER['REQUEST_METHOD'],
+                'requestUrl' => $_SERVER['REQUEST_URI'],
+            ];
+        }
+
+        $record['context']['labels']['channel'] = $record['channel'];
+        $record['context']['labels']['requestId'] = static::$requestId;
+
+        return $record;
     }
 
     protected function setReportError(array $record): array
     {
-        $ex = new \Exception($record['message']);
+        if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
+            $ex = $record['context']['exception'];
+        } else {
+            $ex = new \Exception($record['message']);
+        }
 
         if (isset($record['context']['exception'])) {
             $ex = $record['context']['exception'];
         }
 
-        $record['context']['reportLocation'] = [
-            'filePath'   => $ex->getFile(),
-            'lineNumber' => $ex->getLine(),
-        ];
+        if ($record['level'] >= Logger::ERROR) {
+            $record['context']['reportLocation'] = [
+                'filePath'   => $ex->getFile(),
+                'lineNumber' => $ex->getLine(),
+            ];
 
-        $record['context']['@type'] = 'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent';
+            $record['@type'] = 'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent';
+        }
 
         return $record;
     }
