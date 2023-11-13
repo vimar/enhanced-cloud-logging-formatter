@@ -1,0 +1,27 @@
+{
+    "name": "vimar/enhanced-cloud-logging-formatter",
+    "description": "A Monolog extension for formatting log entries for Google Cloud Logging and Error Reporting",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Vincent Mariani",
+            "email": "vincent@sleipne.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Vimar\\EnhancedCloudLoggingFormatter\\": "src/"
+        }
+    },
+    "keywords": [
+        "monolog",
+        "gcp",
+        "cloud logging",
+        "error reporting"
+    ],
+    "require": {
+        "php": "^8.0",
+        "monolog/monolog": "^2.9.2"
+    }
+}
