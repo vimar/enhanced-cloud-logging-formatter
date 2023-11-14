@@ -63,7 +63,7 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
         $record = $this->setReportError($record);
 
         // Remove keys that are not used by GCP
-        unset($record['channel'], $record['level'], $record['level_name'], $record['datetime']);
+        unset($record['level'], $record['level_name'], $record['datetime']);
         
         return parent::format($record);
     }
@@ -78,8 +78,8 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
             ];
         }
 
-        $record['labels']['channel'] = $record['channel'];
-        $record['labels']['requestId'] = static::$requestId;
+        // as httpRequest can't have custom properties, we put requestId at root
+        $record['requestId'] = static::$requestId;
 
         return $record;
     }
