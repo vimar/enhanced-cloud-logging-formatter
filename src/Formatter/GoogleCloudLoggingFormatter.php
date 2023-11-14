@@ -58,6 +58,12 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
         $record['severity'] = $record['level_name'];
         $record['time'] = $record['datetime']->format(\DateTimeInterface::RFC3339_EXTENDED);
 
+        // move all context properties to "jsonPayload"
+        if (isset($record['context']) && is_array($record['context'])) {
+            $record = array_merge($record, $record['context']);
+            unset($record['context']);
+        }
+
         // Add some generic contexts
         $record = $this->setHttpRequest($record);
         $record = $this->setReportError($record);
@@ -86,14 +92,14 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
 
     protected function setReportError(array $record): array
     {
-        if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
-            $ex = $record['context']['exception'];
-
+        if (isset($record['exception']) && $record['exception'] instanceof \Throwable) {
+            $ex = $record['exception'];
         } else {
             $ex = new \Exception($record['message']);
         }
 
         if ($record['level'] >= Logger::ERROR) {
+            // we keep reportLocation inside context here because it's an ErrorContext structure
             $record['context']['reportLocation'] = [
                 'filePath'   => $ex->getFile(),
                 'lineNumber' => $ex->getLine(),
