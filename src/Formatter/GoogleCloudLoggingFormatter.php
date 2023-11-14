@@ -20,6 +20,7 @@ use Monolog\Logger;
  *
  * @see https://cloud.google.com/logging/docs/structured-logging
  * @see https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
+ * @see https://cloud.google.com/error-reporting/reference/rest/v1beta1/ErrorContext
  *
  */
 class GoogleCloudLoggingFormatter extends JsonFormatter
@@ -68,6 +69,14 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
         $record = $this->setHttpRequest($record);
         $record = $this->setReportError($record);
 
+        if (php_sapi_name()=='cli' && isset($_SERVER['argv'])) {
+            $record['scriptCommand'] = implode(' ', $_SERVER['argv']);
+        }
+
+        if (isset($_SERVER['SCRIPT_FILENAME'])) {
+            $record['scriptFileName'] = $_SERVER['SCRIPT_FILENAME'];
+        }
+
         // Remove keys that are not used by GCP
         unset($record['level'], $record['level_name'], $record['datetime']);
         
@@ -76,12 +85,33 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
 
     protected function setHttpRequest(array $record): array
     {
-        // HttpRequest;
         if (isset($_SERVER['REQUEST_METHOD']) && isset($_SERVER['REQUEST_URI'])) {
             $record['httpRequest'] = [
                 'requestMethod' => $_SERVER['REQUEST_METHOD'],
-                'requestUrl' => $_SERVER['REQUEST_URI'],
+                'requestUrl' => sprintf(
+                    '%s://%s%s',
+                    $_SERVER['REQUEST_SCHEME'],
+                    $_SERVER['HTTP_HOST'],
+                    $_SERVER['REQUEST_URI']
+                ),
             ];
+
+            if (isset($_SERVER['HTTP_REFERER'])) {
+                $record['httpRequest']['referer'] = $_SERVER['HTTP_REFERER'];
+            }
+
+            $clientIp = $this->getClientIp();
+            if (!empty($clientIp)) {
+                $record['httpRequest']['remoteIp'] = $clientIp;
+            }
+
+            if (isset($_SERVER['HTTP_USER_AGENT'])) {
+                $record['httpRequest']['userAgent'] = $_SERVER['HTTP_USER_AGENT'];
+            }
+
+            if (isset($_SERVER['SERVER_PROTOCOL'])) {
+                $record['httpRequest']['protocol'] = $_SERVER['SERVER_PROTOCOL'];
+            }
         }
 
         // as httpRequest can't have custom properties, we put requestId at root
@@ -109,5 +139,29 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
         }
 
         return $record;
+    }
+
+    /**
+     * Returns the client IP address that made the request.
+     *
+     * @param  boolean $proxy Whether the current request has been made behind a proxy or not
+     *
+     * @return string Client IP(s)
+     */
+    protected function getClientIp()
+    {
+        if (isset($_SERVER["HTTP_CLIENT_IP"]) && (!empty($_SERVER["HTTP_CLIENT_IP"]))) {
+            return $_SERVER["HTTP_CLIENT_IP"];
+        }
+
+        if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $ips = explode(', ', (string) $_SERVER['HTTP_X_FORWARDED_FOR']);
+
+            if (isset($ips[0])) {
+                return trim($ips[0]);
+            }
+        }
+
+        return $_SERVER['REMOTE_ADDR'];
     }
 }
