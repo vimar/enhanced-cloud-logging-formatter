@@ -72,14 +72,14 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
     {
         // HttpRequest;
         if (isset($_SERVER['REQUEST_METHOD']) && isset($_SERVER['REQUEST_URI'])) {
-            $record['context']['httpRequest'] = [
+            $record['httpRequest'] = [
                 'requestMethod' => $_SERVER['REQUEST_METHOD'],
                 'requestUrl' => $_SERVER['REQUEST_URI'],
             ];
         }
 
-        $record['context']['labels']['channel'] = $record['channel'];
-        $record['context']['labels']['requestId'] = static::$requestId;
+        $record['labels']['channel'] = $record['channel'];
+        $record['labels']['requestId'] = static::$requestId;
 
         return $record;
     }
@@ -88,12 +88,9 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
     {
         if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
             $ex = $record['context']['exception'];
+
         } else {
             $ex = new \Exception($record['message']);
-        }
-
-        if (isset($record['context']['exception'])) {
-            $ex = $record['context']['exception'];
         }
 
         if ($record['level'] >= Logger::ERROR) {
