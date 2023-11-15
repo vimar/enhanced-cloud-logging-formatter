@@ -169,7 +169,7 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
             return $_SERVER["HTTP_CLIENT_IP"];
         }
 
-        if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && (!empty($_SERVER["HTTP_X_FORWARDED_FOR"])) {
+        if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && (!empty($_SERVER["HTTP_X_FORWARDED_FOR"]))) {
             $ips = explode(',', str_replace(' ', '', $_SERVER['HTTP_X_FORWARDED_FOR']));
 
             if (isset($ips[0])) {
