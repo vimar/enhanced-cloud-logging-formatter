@@ -20,7 +20,6 @@ use Monolog\Logger;
  *
  * @see https://cloud.google.com/logging/docs/structured-logging
  * @see https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
- * @see https://cloud.google.com/error-reporting/reference/rest/v1beta1/ErrorContext
  *
  */
 class GoogleCloudLoggingFormatter extends JsonFormatter
@@ -129,11 +128,27 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
         }
 
         if ($record['level'] >= Logger::ERROR) {
-            // we keep reportLocation inside context here because it's an ErrorContext structure
+            /**
+             * We need to declare a specific context property because it's part of ErrorContext structure
+             *
+             * @see https://cloud.google.com/error-reporting/docs/formatting-error-messages
+             * @see https://cloud.google.com/error-reporting/reference/rest/v1beta1/ErrorContext
+             */
+            if (isset($record['httpRequest'])) {
+                $record['context']['httpRequest'] = $record['httpRequest'];
+            }
+
             $record['context']['reportLocation'] = [
                 'filePath'   => $ex->getFile(),
                 'lineNumber' => $ex->getLine(),
             ];
+
+            if (getenv('SERVICE_NAME') && getenv('SERVICE_VERSION')) {
+                $record['serviceContext'] = [
+                    'service'   => getenv('SERVICE_NAME'),
+                    'version' => getenv('SERVICE_VERSION'),
+                ];
+            }
 
             $record['@type'] = 'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent';
         }
