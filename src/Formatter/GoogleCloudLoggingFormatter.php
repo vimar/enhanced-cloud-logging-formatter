@@ -121,13 +121,27 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
 
     protected function setReportError(array $record): array
     {
-        if (isset($record['exception']) && $record['exception'] instanceof \Throwable) {
-            $ex = $record['exception'];
-        } else {
-            $ex = new \Exception($record['message']);
-        }
-
         if ($record['level'] >= Logger::ERROR) {
+            if (isset($record['exception']) && $record['exception'] instanceof \Throwable) {
+                $ex = $record['exception'];
+            } else {
+                $ex = $record['exception'] = new \Exception($record['message']);
+            }
+
+            $trace = $ex->getTrace();
+
+            $functionName = '';
+            if (isset($trace[0])) {
+                $function = $trace[0];
+
+                if (isset($function['class'])) {
+                    $functionName = $function['class'] . '::';
+                }
+                if (isset($function['function'])) {
+                    $functionName .= $function['function'];
+                }
+            }
+
             /**
              * We need to declare a specific context property because it's part of ErrorContext structure
              *
@@ -140,13 +154,14 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
 
             $record['context']['reportLocation'] = [
                 'filePath'   => $ex->getFile(),
+                'functionName' => $functionName,
                 'lineNumber' => $ex->getLine(),
             ];
 
-            if (getenv('SERVICE_NAME') && getenv('SERVICE_VERSION')) {
+            if (getenv('SERVICE_NAME') || getenv('SERVICE_VERSION')) {
                 $record['serviceContext'] = [
-                    'service'   => getenv('SERVICE_NAME'),
-                    'version' => getenv('SERVICE_VERSION'),
+                    'service'   => (getenv('SERVICE_NAME') ?: ''),
+                    'version' => (getenv('SERVICE_VERSION') ?: ''),
                 ];
             }
 
