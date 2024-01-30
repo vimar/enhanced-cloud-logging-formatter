@@ -16,7 +16,7 @@ use Monolog\Logger;
 
 /**
  * Encodes message information into JSON in a format compatible with Cloud logging.
- * Add Error Reporting entry if level >= ERROR
+ * Add Error Reporting entry if level >= $errorReportingLevel (default: Logger::ERROR)
  *
  * @see https://cloud.google.com/logging/docs/structured-logging
  * @see https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
@@ -33,7 +33,11 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
     /** @var bool */
     protected $includeStacktraces = false;
     /** @var int */
-    protected $errorReportingLevel = false;
+    protected $errorReportingLevel = Logger::ERROR;
+    /** @var string */
+    protected $service = '';
+    /** @var string */
+    protected $version = '';
 
     static protected $requestId = null;
 
@@ -45,10 +49,14 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
         bool $appendNewline = true,
         bool $ignoreEmptyContextAndExtra = true,
         bool $includeStacktraces = true,
-        int $errorReportingLevel =  Logger::ERROR
+        int $errorReportingLevel =  Logger::ERROR,
+        string $service =  '',
+        string $version =  '',
     ) {
         parent::__construct($batchMode, $appendNewline, $ignoreEmptyContextAndExtra, $includeStacktraces);
         $this->errorReportingLevel = $errorReportingLevel;
+        $this->service = $service;
+        $this->version = $version;
 
         if (!static::$requestId) {
             static::$requestId = uniqid(date("Y/m/d-H:i:s-"));
@@ -162,10 +170,10 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
                 'lineNumber' => $ex->getLine(),
             ];
 
-            if (getenv('SERVICE_NAME') || getenv('SERVICE_VERSION')) {
+            if ($this->service || $this->version) {
                 $record['serviceContext'] = [
-                    'service'   => (getenv('SERVICE_NAME') ?: ''),
-                    'version' => (getenv('SERVICE_VERSION') ?: ''),
+                    'service'   => $this->service,
+                    'version' => $this->version,
                 ];
             }
 
