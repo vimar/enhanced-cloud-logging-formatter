@@ -32,6 +32,8 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
     protected $ignoreEmptyContextAndExtra;
     /** @var bool */
     protected $includeStacktraces = false;
+    /** @var int */
+    protected $errorReportingLevel = false;
 
     static protected $requestId = null;
 
@@ -42,9 +44,11 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
         int $batchMode = self::BATCH_MODE_JSON,
         bool $appendNewline = true,
         bool $ignoreEmptyContextAndExtra = true,
-        bool $includeStacktraces = true
+        bool $includeStacktraces = true,
+        int $errorReportingLevel =  Logger::ERROR
     ) {
         parent::__construct($batchMode, $appendNewline, $ignoreEmptyContextAndExtra, $includeStacktraces);
+        $this->errorReportingLevel = $errorReportingLevel;
 
         if (!static::$requestId) {
             static::$requestId = uniqid(date("Y/m/d-H:i:s-"));
@@ -121,7 +125,7 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
 
     protected function setReportError(array $record): array
     {
-        if ($record['level'] >= Logger::ERROR) {
+        if ($record['level'] >= $this->errorReportingLevel) {
             if (isset($record['exception']) && $record['exception'] instanceof \Throwable) {
                 $ex = $record['exception'];
             } else {
