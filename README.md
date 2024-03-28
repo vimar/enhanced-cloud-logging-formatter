@@ -4,9 +4,13 @@ The `Enhanced Cloud Logging Formatter` is a custom formatter for Monolog that re
 
 ## Features
 
-- **Error Reporting**: The `GoogleCloudLoggingFormatter` enables error reporting, allowing you to control the reporting of error events to Google Cloud Platform (GCP). The `errorReportingLevel` parameter can be modify to specify the minimum log level that triggers error reporting.
+- **Error Reporting**: The `GoogleCloudLoggingFormatter` enables error reporting, allowing you to control the reporting of error events to Google Cloud Platform (GCP). The `errorReportingLevel` parameter can be modified to specify the minimum log level that triggers error reporting.
 
-- **Complete Log Metadata**: This formatter completes log metadata, providing additional context information before sending logs to GCP. This ensures that logs include comprehensive details, making it easier to analyze and debug issues.
+- **Complete Log Metadata**: This formatter completes log metadata, providing additional context information before sending logs to GCP. This ensures that logs include comprehensive details, making it easier to analyze and debug issues. Additional metadata contains:
+  - Unique RequestId to easily search all the logs for a single HTTP request
+  - Exhaustive HTTP info for each log entries, such as request Url, referer, remote IP and User Agent
+  - For CLI commands, script command and script filename called
+  - When an error is thrown, add information about error context (report location, stack trace, exception message, service name and version number if they are provided)
 
 ## Installation
 
