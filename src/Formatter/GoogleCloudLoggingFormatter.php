@@ -12,7 +12,8 @@
 namespace Vimar\EnhancedCloudLoggingFormatter\Formatter;
 
 use Monolog\Formatter\JsonFormatter;
-use Monolog\Logger;
+use Monolog\Level;
+use Monolog\LogRecord;
 
 /**
  * Encodes message information into JSON in a format compatible with Cloud logging.
@@ -24,32 +25,31 @@ use Monolog\Logger;
  */
 class GoogleCloudLoggingFormatter extends JsonFormatter
 {
-    /** @var self::BATCH_MODE_* */
-    protected $batchMode;
-    /** @var bool */
-    protected $appendNewline;
-    /** @var bool */
-    protected $ignoreEmptyContextAndExtra;
-    /** @var bool */
-    protected $includeStacktraces = false;
-    /** @var int */
-    protected $errorReportingLevel = Logger::ERROR;
-    /** @var string */
-    protected $service = '';
-    /** @var string */
-    protected $version = '';
+    protected int $batchMode;
 
-    static protected $requestId = null;
+    protected bool $appendNewline;
+
+    protected bool $ignoreEmptyContextAndExtra;
+
+    protected bool $includeStacktraces = false;
+
+    protected Level $errorReportingLevel = Level::Error;
+
+    protected string $service = '';
+
+    protected string $version = '';
+
+    static protected ?string $requestId = null;
 
     /**
-     * @param self::BATCH_MODE_* $batchMode
+     * @param int self::BATCH_MODE_* $batchMode
      */
     public function __construct(
         int $batchMode = self::BATCH_MODE_JSON,
         bool $appendNewline = true,
         bool $ignoreEmptyContextAndExtra = true,
         bool $includeStacktraces = true,
-        int $errorReportingLevel =  Logger::ERROR,
+        Level $errorReportingLevel =  Level::Error,
         string $service =  '',
         string $version =  '',
     ) {
@@ -63,35 +63,37 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
         }
     }
 
-    /** {@inheritdoc} **/
-    public function format(array $record): string
+    protected function normalizeRecord(LogRecord $record): array
     {
+        /** @var array<mixed> $normalized */
+        $normalized = $this->normalize($record->toArray());
+
         // Re-key level for GCP logging
-        $record['severity'] = $record['level_name'];
-        $record['time'] = $record['datetime']->format(\DateTimeInterface::RFC3339_EXTENDED);
+        $normalized['severity'] = $normalized['level_name'];
+        $normalized['time'] = (new \DateTime($normalized['datetime']))->format(\DateTimeInterface::RFC3339_EXTENDED);
 
         // move all context properties to "jsonPayload"
-        if (isset($record['context']) && is_array($record['context'])) {
-            $record = array_merge($record, $record['context']);
-            unset($record['context']);
+        if (isset($normalized['context']) && is_array($normalized['context'])) {
+            $normalized = array_merge($normalized, $normalized['context']);
+            unset($normalized['context']);
         }
 
         // Add some generic contexts
-        $record = $this->setHttpRequest($record);
-        $record = $this->setReportError($record);
+        $normalized = $this->setHttpRequest($normalized);
+        $normalized = $this->setReportError($normalized);
 
         if (php_sapi_name()=='cli' && isset($_SERVER['argv'])) {
-            $record['scriptCommand'] = implode(' ', $_SERVER['argv']);
+            $normalized['scriptCommand'] = implode(' ', $_SERVER['argv']);
         }
 
         if (isset($_SERVER['SCRIPT_FILENAME'])) {
-            $record['scriptFileName'] = $_SERVER['SCRIPT_FILENAME'];
+            $normalized['scriptFileName'] = $_SERVER['SCRIPT_FILENAME'];
         }
 
         // Remove keys that are not used by GCP
-        unset($record['level'], $record['level_name'], $record['datetime']);
-        
-        return parent::format($record);
+        unset($normalized['level'], $normalized['level_name'], $normalized['datetime']);
+
+        return $normalized;
     }
 
     protected function setHttpRequest(array $record): array
