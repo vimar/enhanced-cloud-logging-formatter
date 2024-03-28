@@ -1,4 +1,9 @@
-# Enhanced Cloud Logging Formatter
+# Enhanced Cloud Logging Formatter v2.x
+
+[![Total Downloads](https://img.shields.io/packagist/dt/vimar/enhanced-cloud-logging-formatter.svg)](https://packagist.org/packages/vimar/enhanced-cloud-logging-formatter)
+[![Latest Stable Version](https://img.shields.io/packagist/v/vimar/enhanced-cloud-logging-formatter.svg)](https://packagist.org/packages/vimar/enhanced-cloud-logging-formatter)
+
+>**Note** v2.x version is only compatible with Monolog 2.x, please use [v3.x](https://github.com/vimar/enhanced-cloud-logging-formatter/blob/main/README.md) if you use Monolog 3.x.
 
 The `Enhanced Cloud Logging Formatter` is a custom formatter for Monolog that replaces the default `GoogleCloudLoggingFormatter` provided by Monolog. This formatter is designed to be used when you want to send logs from your PHP application to Google Cloud Logging.
 
