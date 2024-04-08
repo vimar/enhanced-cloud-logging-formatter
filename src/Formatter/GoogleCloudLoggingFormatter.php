@@ -135,7 +135,8 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
 
     protected function setReportError(array $record): array
     {
-        if ($record['level'] >= $this->errorReportingLevel) {
+        $recordLevel = Level::fromValue($record['level']);
+        if ($recordLevel->includes($this->errorReportingLevel)) {
             if (isset($record['exception']) && $record['exception'] instanceof \Throwable) {
                 $ex = $record['exception'];
             } else {
