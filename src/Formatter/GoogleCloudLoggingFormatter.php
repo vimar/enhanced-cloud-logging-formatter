@@ -99,11 +99,14 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
     protected function setHttpRequest(array $record): array
     {
         if (isset($_SERVER['REQUEST_METHOD']) && isset($_SERVER['REQUEST_URI'])) {
+
+            $scheme = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? $_SERVER['REQUEST_SCHEME'];
+
             $record['httpRequest'] = [
                 'requestMethod' => $_SERVER['REQUEST_METHOD'],
                 'requestUrl' => sprintf(
                     '%s://%s%s',
-                    $_SERVER['REQUEST_SCHEME'],
+                    $scheme,
                     $_SERVER['HTTP_HOST'],
                     $_SERVER['REQUEST_URI']
                 ),
