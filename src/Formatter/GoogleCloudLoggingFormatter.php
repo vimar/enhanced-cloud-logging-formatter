@@ -59,7 +59,10 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
         $this->version = $version;
 
         if (!static::$requestId) {
-            static::$requestId = uniqid(date("Y/m/d-H:i:s-"));
+            static::$requestId = uniqid(date('Y/m/d-H:i:s-'));
+        }
+        if (!preg_match('/^[a-z]{2}(_[A-Z]{2})?$/', \Locale::getDefault())) {
+            \Locale::setDefault('fr'); // ou 'en'
         }
     }
 
@@ -68,9 +71,22 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
         /** @var array<mixed> $normalized */
         $normalized = $this->normalize($record->toArray());
 
+        // Patch de sécurité pour la date
+        try {
+            if (isset($normalized['datetime'])) {
+                $date = new \DateTime($normalized['datetime']);
+                $normalized['time'] = $date->format(\DateTimeInterface::RFC3339_EXTENDED);
+            } else {
+                $normalized['time'] = (new \DateTime())->format(\DateTimeInterface::RFC3339_EXTENDED);
+            }
+        } catch (\Throwable $e) {
+            // fallback safe si la date ou la locale plante
+            error_log('[CloudFormatter] Failed to format time: ' . $e->getMessage());
+            $normalized['time'] = (new \DateTime())->format(DATE_ATOM); // ISO8601 safe
+        }
+        /** @var array<mixed> $normalized */
         // Re-key level for GCP logging
         $normalized['severity'] = $normalized['level_name'];
-        $normalized['time'] = (new \DateTime($normalized['datetime']))->format(\DateTimeInterface::RFC3339_EXTENDED);
 
         // move all context properties to "jsonPayload"
         if (isset($normalized['context']) && is_array($normalized['context'])) {
@@ -198,11 +214,11 @@ class GoogleCloudLoggingFormatter extends JsonFormatter
      */
     protected function getClientIp()
     {
-        if (isset($_SERVER["HTTP_CLIENT_IP"]) && (!empty($_SERVER["HTTP_CLIENT_IP"]))) {
-            return $_SERVER["HTTP_CLIENT_IP"];
+        if (isset($_SERVER['HTTP_CLIENT_IP']) && (!empty($_SERVER['HTTP_CLIENT_IP']))) {
+            return $_SERVER['HTTP_CLIENT_IP'];
         }
 
-        if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && (!empty($_SERVER["HTTP_X_FORWARDED_FOR"]))) {
+        if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))) {
             $ips = explode(',', str_replace(' ', '', $_SERVER['HTTP_X_FORWARDED_FOR']));
 
             if (isset($ips[0])) {
